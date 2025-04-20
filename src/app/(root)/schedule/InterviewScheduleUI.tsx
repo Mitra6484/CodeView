@@ -301,7 +301,7 @@ function InterviewScheduleUI() {
           </div>
         </div>
       ) : (
-        <div className="text-center py-12 text-muted-foreground">No interviews scheduled</div>
+        <div className="text-center py-12 text-muted-foreground">No interviews scheduled!</div>
       )}
     </div>
   );
