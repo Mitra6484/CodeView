@@ -11,9 +11,23 @@ import MeetingModal from "@/components/MeetingModal";
 import LoaderUI from "@/components/LoaderUI";
 import { Loader2Icon } from "lucide-react";
 import MeetingCard from "@/components/MeetingCard";
+import { CheckCircle2Icon, XCircleIcon, ChevronDownIcon, Trash2Icon } from "lucide-react";
+import { useMutation } from "convex/react";
+import { toast } from "react-hot-toast";
+import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Id } from "../../../../convex/_generated/dataModel";
+import InterviewResultCard from "@/components/InterviewResultCard";
+import { Badge } from "@/components/ui/badge";
 
 export default function Home() {
   const router = useRouter();
+  const [openResults, setOpenResults] = useState(false);
+  const updateStatus = useMutation(api.interviews.updateInterviewStatus);
 
   const { isInterviewer, isCandidate, isLoading } = useUserRole();
   const interviews = useQuery(api.interviews.getMyInterviews);
@@ -32,6 +46,15 @@ export default function Home() {
         break;
       default:
         router.push(`/${title.toLowerCase()}`);
+    }
+  };
+
+  const handleDeleteResult = async (interviewId: Id<"interviews">) => {
+    try {
+      await updateStatus({ id: interviewId, status: "completed" });
+      toast.success("Result cleared successfully");
+    } catch (error) {
+      toast.error("Failed to clear result");
     }
   };
 
@@ -76,6 +99,36 @@ export default function Home() {
             <h1 className="text-3xl font-bold">Your Interviews</h1>
             <p className="text-muted-foreground mt-1">View and join your scheduled interviews</p>
           </div>
+
+          {/* Interview Results Section */}
+          {interviews?.some((interview) => interview.status === "succeeded" || interview.status === "failed") && (
+            <div className="mt-6">
+              <Collapsible open={openResults} onOpenChange={setOpenResults}>
+                <div className="flex items-center justify-between">
+                  <CollapsibleTrigger className="flex items-center gap-2 px-4 py-2 bg-primary/5 hover:bg-primary/10 rounded-lg transition-colors">
+                    <h2 className="text-xl font-semibold">Interview Results</h2>
+                    <Badge variant="secondary" className="ml-2">
+                      {interviews.filter((interview) => interview.status === "succeeded" || interview.status === "failed").length}
+                    </Badge>
+                    <ChevronDownIcon 
+                      className={`h-5 w-5 transition-transform duration-300 ${openResults ? "rotate-180" : ""}`} 
+                    />
+                  </CollapsibleTrigger>
+                </div>
+                <CollapsibleContent className="space-y-4 mt-4">
+                  {interviews
+                    .filter((interview) => interview.status === "succeeded" || interview.status === "failed")
+                    .map((interview) => (
+                      <InterviewResultCard
+                        key={interview._id}
+                        interview={interview}
+                        onDelete={handleDeleteResult}
+                      />
+                    ))}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          )}
 
           <div className="mt-8">
             {interviews === undefined ? (

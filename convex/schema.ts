@@ -1,5 +1,5 @@
-import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+import { defineSchema, defineTable } from "convex/server"
+import { v } from "convex/values"
 
 export default defineSchema({
   users: defineTable({
@@ -29,4 +29,20 @@ export default defineSchema({
     interviewerId: v.string(),
     interviewId: v.id("interviews"),
   }).index("by_interview_id", ["interviewId"]),
-});
+
+  questions: defineTable({
+    title: v.string(),
+    description: v.string(),
+    examples: v.array(
+      v.object({
+        input: v.string(),
+        output: v.string(),
+        explanation: v.optional(v.string()),
+      }),
+    ),
+    constraints: v.optional(v.array(v.string())),
+    supportedLanguages: v.array(v.string()),
+    starterCode: v.record(v.string(), v.string()),
+    createdBy: v.string(),
+  }).index("by_created_by", ["createdBy"]),
+})

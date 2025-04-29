@@ -44,7 +44,6 @@ function RecordingCard({ recording }: { recording: CallRecording }) {
       </CardHeader>
 
       {/* CARD CONTENT */}
-
       <CardContent>
         <div
           className="w-full aspect-video bg-muted/50 rounded-lg flex items-center justify-center cursor-pointer group"

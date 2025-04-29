@@ -22,20 +22,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import UserInfo from "@/components/UserInfo";
-import { Loader2Icon, XIcon } from "lucide-react";
+import { Loader2Icon, XIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { TIME_SLOTS } from "@/constants";
 import MeetingCard from "@/components/MeetingCard";
+import { Id } from "../../../../convex/_generated/dataModel";
 
 function InterviewScheduleUI() {
   const client = useStreamVideoClient();
   const { user } = useUser();
   const [open, setOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [editingInterview, setEditingInterview] = useState<Id<"interviews"> | null>(null);
 
   const interviews = useQuery(api.interviews.getAllInterviews) ?? [];
   const users = useQuery(api.users.getUsers) ?? [];
   const createInterview = useMutation(api.interviews.createInterview);
+  const updateInterview = useMutation(api.interviews.updateInterview);
+  const deleteInterview = useMutation(api.interviews.deleteInterview);
 
   const candidates = users?.filter((u) => u.role === "candidate");
   const interviewers = users?.filter((u) => u.role === "interviewer");
@@ -49,61 +53,107 @@ function InterviewScheduleUI() {
     interviewerIds: user?.id ? [user.id] : [],
   });
 
-  const scheduleMeeting = async () => {
+  const handleEdit = (interview: any) => {
+    if (interview.status !== "upcoming") {
+      toast.error("Can only edit upcoming interviews");
+      return;
+    }
+    setEditingInterview(interview._id);
+    setFormData({
+      title: interview.title,
+      description: interview.description || "",
+      date: new Date(interview.startTime),
+      time: new Date(interview.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+      candidateId: interview.candidateId,
+      interviewerIds: interview.interviewerIds,
+    });
+    setOpen(true);
+  };
+
+  const handleSubmit = async () => {
     if (!client || !user) return;
     if (!formData.candidateId || formData.interviewerIds.length === 0) {
       toast.error("Please select both candidate and at least one interviewer");
       return;
     }
-
-    setIsCreating(true);
-
-    try {
-      const { title, description, date, time, candidateId, interviewerIds } = formData;
-      const [hours, minutes] = time.split(":");
-      const meetingDate = new Date(date);
-      meetingDate.setHours(parseInt(hours), parseInt(minutes), 0);
-
-      const id = crypto.randomUUID();
-      const call = client.call("default", id);
-
-      await call.getOrCreate({
-        data: {
-          starts_at: meetingDate.toISOString(),
-          custom: {
-            description: title,
-            additionalDetails: description,
-          },
-        },
-      });
-
-      await createInterview({
-        title,
-        description,
-        startTime: meetingDate.getTime(),
-        status: "upcoming",
-        streamCallId: id,
-        candidateId,
-        interviewerIds,
-      });
-
-      setOpen(false);
-      toast.success("Meeting scheduled successfully!");
-
-      setFormData({
-        title: "",
-        description: "",
-        date: new Date(),
-        time: "09:00",
-        candidateId: "",
-        interviewerIds: user?.id ? [user.id] : [],
-      });
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to schedule meeting. Please try again.");
-    } finally {
-      setIsCreating(false);
+  
+    const { title, description, date, time, candidateId, interviewerIds } = formData;
+    const [hours, minutes] = time.split(":");
+    const meetingDate = new Date(date);
+    meetingDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+  
+    // Check for time conflict (excluding the interview being edited)
+    const conflict = interviews.some((interview) => {
+      if (editingInterview && interview._id === editingInterview) return false;
+      const interviewDate = new Date(interview.startTime);
+      return (
+        interviewDate.getFullYear() === meetingDate.getFullYear() &&
+        interviewDate.getMonth() === meetingDate.getMonth() &&
+        interviewDate.getDate() === meetingDate.getDate() &&
+        interviewDate.getHours() === meetingDate.getHours() &&
+        interviewDate.getMinutes() === meetingDate.getMinutes()
+      );
+    });
+  
+    if (conflict) {
+      toast.error("Another interview is already scheduled at this time!");
+      return;
     }
+
+    if (editingInterview) {
+      try {
+        await updateInterview({
+          id: editingInterview,
+          title,
+          description,
+          startTime: meetingDate.getTime(),
+          candidateId,
+          interviewerIds,
+        });
+        toast.success("Interview updated successfully!");
+      } catch (error) {
+        toast.error("Failed to update interview");
+      }
+    } else {
+      try {
+        const id = crypto.randomUUID();
+        const call = client.call("default", id);
+  
+        await call.getOrCreate({
+          data: {
+            starts_at: meetingDate.toISOString(),
+            custom: {
+              description: title,
+              additionalDetails: description,
+            },
+          },
+        });
+  
+        await createInterview({
+          title,
+          description,
+          startTime: meetingDate.getTime(),
+          status: "upcoming",
+          streamCallId: id,
+          candidateId,
+          interviewerIds,
+        });
+        toast.success("Interview scheduled successfully!");
+      } catch (error) {
+        toast.error("Failed to schedule interview");
+      }
+    }
+  
+    setOpen(false);
+    setEditingInterview(null);
+    setFormData({
+      title: "",
+      description: "",
+      date: new Date(),
+      time: "09:00",
+      candidateId: "",
+      interviewerIds: user?.id ? [user.id] : [],
+    });
   };
 
   const addInterviewer = (interviewerId: string) => {
@@ -131,6 +181,15 @@ function InterviewScheduleUI() {
     (i) => !formData.interviewerIds.includes(i.clerkId)
   );
 
+  const handleDelete = async (interviewId: Id<"interviews">) => {
+    try {
+      await deleteInterview({ id: interviewId });
+      toast.success("Interview deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete interview");
+    }
+  };
+
   return (
     <div className="container max-w-7xl mx-auto p-6 space-y-8">
       <div className="flex items-center justify-between">
@@ -149,7 +208,7 @@ function InterviewScheduleUI() {
 
           <DialogContent className="sm:max-w-[500px] h-[calc(100vh-200px)] overflow-auto">
             <DialogHeader>
-              <DialogTitle>Schedule Interview</DialogTitle>
+              <DialogTitle>{editingInterview ? "Edit Interview" : "Schedule Interview"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               {/* INTERVIEW TITLE */}
@@ -268,17 +327,28 @@ function InterviewScheduleUI() {
 
               {/* ACTION BUTTONS */}
               <div className="flex justify-end gap-3 pt-4">
-                <Button variant="outline" onClick={() => setOpen(false)}>
+                <Button variant="outline" onClick={() => {
+                  setOpen(false);
+                  setEditingInterview(null);
+                  setFormData({
+                    title: "",
+                    description: "",
+                    date: new Date(),
+                    time: "09:00",
+                    candidateId: "",
+                    interviewerIds: user?.id ? [user.id] : [],
+                  });
+                }}>
                   Cancel
                 </Button>
-                <Button onClick={scheduleMeeting} disabled={isCreating}>
+                <Button onClick={handleSubmit} disabled={isCreating}>
                   {isCreating ? (
                     <>
                       <Loader2Icon className="mr-2 size-4 animate-spin" />
-                      Scheduling...
+                      {editingInterview ? "Updating..." : "Scheduling..."}
                     </>
                   ) : (
-                    "Schedule Interview"
+                    editingInterview ? "Update Interview" : "Schedule Interview"
                   )}
                 </Button>
               </div>
@@ -296,7 +366,31 @@ function InterviewScheduleUI() {
         <div className="spacey-4">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {interviews.map((interview) => (
-              <MeetingCard key={interview._id} interview={interview} />
+              <div key={interview._id} className="relative group">
+                <MeetingCard interview={interview} />
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 ease-in-out transform translate-y-1 group-hover:translate-y-0">
+                  {interview.status === "upcoming" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 hover:bg-primary/10"
+                      onClick={() => handleEdit(interview)}
+                    >
+                      <PencilIcon className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {interview.interviewerIds.includes(user?.id || "") && (
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="h-8 w-8 hover:bg-destructive/90"
+                      onClick={() => handleDelete(interview._id)}
+                    >
+                      <Trash2Icon className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
         </div>
