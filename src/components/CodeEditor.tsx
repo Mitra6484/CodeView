@@ -16,7 +16,7 @@ import { Button } from "./ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs"
 import { Textarea } from "./ui/textarea"
 import { executeCode, type ExecuteCodeResult } from "../actions/execute-code"
-import { ExecutionResult } from "./code-execution/ExecutionResult"
+import { ExecutionResult } from "./ExecutionResult"
 
 type Question = Doc<"questions">
 

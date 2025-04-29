@@ -1,8 +1,8 @@
-import { ScrollArea } from "../ui/scroll-area"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
-import { Badge } from "../ui/badge"
+import { ScrollArea } from "./ui/scroll-area"
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
+import { Badge } from "./ui/badge"
 import { CheckCircleIcon, XCircleIcon, ClockIcon } from "lucide-react"
-import type { ExecuteCodeResult } from "../../actions/execute-code"
+import type { ExecuteCodeResult } from "../actions/execute-code"
 import React from "react"
 
 interface ExecutionResultProps {
