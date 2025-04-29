@@ -9,19 +9,38 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "./ui/resiz
 import { ScrollArea, ScrollBar } from "./ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
-import { AlertCircleIcon, BookIcon, LightbulbIcon } from "lucide-react"
+import { AlertCircleIcon, BookIcon, LightbulbIcon, PlayIcon } from "lucide-react"
 import Editor from "@monaco-editor/react"
 import LoaderUI from "./LoaderUI"
+import { Button } from "./ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs"
+import { Textarea } from "./ui/textarea"
+import { executeCode, type ExecuteCodeResult } from "../actions/execute-code"
+import { ExecutionResult } from "./code-execution/ExecutionResult"
 
 type Question = Doc<"questions">
+
+interface Example {
+  input: string
+  output: string
+  explanation?: string
+}
+
+interface Constraint {
+  text: string
+}
 
 function CodeEditor() {
   const questions = useQuery(api.questions.getAllQuestions)
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null)
   const [language, setLanguage] = useState<"javascript" | "python" | "java">(LANGUAGES[0].id)
   const [code, setCode] = useState("")
+  const [input, setInput] = useState("")
+  const [activeTab, setActiveTab] = useState<"input" | "output">("input")
+  const [isExecuting, setIsExecuting] = useState(false)
+  const [executionResult, setExecutionResult] = useState<ExecuteCodeResult | null>(null)
 
-  const selectedQuestion = selectedQuestionId ? questions?.find((q) => q._id === selectedQuestionId) : questions?.[0]
+  const selectedQuestion = selectedQuestionId ? questions?.find((q: Question) => q._id === selectedQuestionId) : questions?.[0]
 
   useEffect(() => {
     if (questions && questions.length > 0 && !selectedQuestionId) {
@@ -37,7 +56,7 @@ function CodeEditor() {
 
   const handleQuestionChange = (questionId: string) => {
     setSelectedQuestionId(questionId)
-    const question = questions?.find((q) => q._id === questionId)
+    const question = questions?.find((q: Question) => q._id === questionId)
     if (question && question.starterCode[language]) {
       setCode(question.starterCode[language])
     }
@@ -47,6 +66,30 @@ function CodeEditor() {
     if (selectedQuestion && selectedQuestion.supportedLanguages.includes(newLanguage)) {
       setLanguage(newLanguage)
       setCode(selectedQuestion.starterCode[newLanguage] || "")
+    }
+  }
+
+  const handleRunCode = async () => {
+    setIsExecuting(true)
+    setActiveTab("output")
+
+    try {
+      const result = await executeCode({
+        language,
+        code,
+        input,
+      })
+
+      setExecutionResult(result)
+    } catch (error) {
+      console.error("Failed to execute code:", error)
+      setExecutionResult({
+        success: false,
+        output: "",
+        error: "Failed to execute code. Please try again.",
+      })
+    } finally {
+      setIsExecuting(false)
     }
   }
 
@@ -85,7 +128,7 @@ function CodeEditor() {
                       <SelectValue placeholder="Select question" />
                     </SelectTrigger>
                     <SelectContent>
-                      {questions.map((q) => (
+                      {questions.map((q: Question) => (
                         <SelectItem key={q._id} value={q._id}>
                           {q.title}
                         </SelectItem>
@@ -95,7 +138,6 @@ function CodeEditor() {
 
                   <Select value={language} onValueChange={handleLanguageChange}>
                     <SelectTrigger className="w-[150px]">
-                      {/* SELECT VALUE */}
                       <SelectValue>
                         <div className="flex items-center gap-2">
                           <img src={`/${language}.png`} alt={language} className="w-5 h-5 object-contain" />
@@ -103,7 +145,6 @@ function CodeEditor() {
                         </div>
                       </SelectValue>
                     </SelectTrigger>
-                    {/* SELECT CONTENT */}
                     <SelectContent>
                       {LANGUAGES.filter((lang) => selectedQuestion.supportedLanguages.includes(lang.id)).map((lang) => (
                         <SelectItem key={lang.id} value={lang.id}>
@@ -140,7 +181,7 @@ function CodeEditor() {
                 <CardContent>
                   <ScrollArea className="h-full w-full rounded-md border">
                     <div className="p-4 space-y-4">
-                      {selectedQuestion.examples.map((example, index) => (
+                      {selectedQuestion.examples.map((example: Example, index: number) => (
                         <div key={index} className="space-y-2">
                           <p className="font-medium text-sm">Example {index + 1}:</p>
                           <ScrollArea className="h-full w-full rounded-md">
@@ -170,7 +211,7 @@ function CodeEditor() {
                   </CardHeader>
                   <CardContent>
                     <ul className="list-disc list-inside space-y-1.5 text-sm marker:text-muted-foreground">
-                      {selectedQuestion.constraints.map((constraint, index) => (
+                      {selectedQuestion.constraints.map((constraint: string, index: number) => (
                         <li key={index} className="text-muted-foreground">
                           {constraint}
                         </li>
@@ -189,25 +230,62 @@ function CodeEditor() {
 
       {/* CODE EDITOR */}
       <ResizablePanel defaultSize={60} maxSize={100}>
-        <div className="h-full relative">
-          <Editor
-            height={"100%"}
-            defaultLanguage={language}
-            language={language}
-            theme="vs-dark"
-            value={code}
-            onChange={(value) => setCode(value || "")}
-            options={{
-              minimap: { enabled: false },
-              fontSize: 18,
-              lineNumbers: "on",
-              scrollBeyondLastLine: false,
-              automaticLayout: true,
-              padding: { top: 16, bottom: 16 },
-              wordWrap: "on",
-              wrappingIndent: "indent",
-            }}
-          />
+        <div className="h-full flex flex-col">
+          <div className="flex-1 relative overflow-hidden">
+            <Editor
+              height="100%"
+              defaultLanguage={language}
+              language={language}
+              theme="vs-dark"
+              value={code}
+              onChange={(value) => setCode(value || "")}
+              options={{
+                minimap: { enabled: false },
+                fontSize: 18,
+                lineNumbers: "on",
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                padding: { top: 16, bottom: 16 },
+                wordWrap: "on",
+                wrappingIndent: "indent",
+              }}
+            />
+          </div>
+
+          <div className="border-t border-border bg-background">
+            <div className="flex items-center justify-between p-2 bg-muted/30">
+              <Tabs
+                value={activeTab}
+                onValueChange={(value) => setActiveTab(value as "input" | "output")}
+                className="w-full"
+              >
+                <div className="flex items-center justify-between">
+                  <TabsList>
+                    <TabsTrigger value="input">Input</TabsTrigger>
+                    <TabsTrigger value="output">Output</TabsTrigger>
+                  </TabsList>
+                  <Button onClick={handleRunCode} disabled={isExecuting} size="sm" className="mr-2">
+                    <PlayIcon className="h-4 w-4 mr-1" />
+                    {isExecuting ? "Running..." : "Run Code"}
+                  </Button>
+                </div>
+
+                <TabsContent value="input" className="p-2">
+                  <Textarea
+                    placeholder="Enter input for your code here..."
+                    className="min-h-[100px] font-mono text-sm"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                  />
+                </TabsContent>
+                <TabsContent value="output" className="p-2">
+                  <div className="max-h-[200px] overflow-auto">
+                    <ExecutionResult result={executionResult} isLoading={isExecuting} />
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
         </div>
       </ResizablePanel>
     </ResizablePanelGroup>
