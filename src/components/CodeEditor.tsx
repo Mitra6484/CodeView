@@ -9,14 +9,16 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "./ui/resiz
 import { ScrollArea, ScrollBar } from "./ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
-import { AlertCircleIcon, BookIcon, LightbulbIcon, PlayIcon } from "lucide-react"
+import { AlertCircleIcon, BookIcon, LightbulbIcon, PlayIcon, SendIcon } from "lucide-react"
 import Editor from "@monaco-editor/react"
 import LoaderUI from "./LoaderUI"
 import { Button } from "./ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs"
 import { Textarea } from "./ui/textarea"
 import { executeCode, type ExecuteCodeResult } from "../actions/execute-code"
+import { analyzeCode, type CodeAnalysisResult } from "../actions/analyze-code"
 import { ExecutionResult } from "./ExecutionResult"
+import { AnalysisResult } from "./AnalysisResult"
 
 type Question = Doc<"questions">
 
@@ -26,19 +28,21 @@ interface Example {
   explanation?: string
 }
 
-interface Constraint {
-  text: string
+interface CodeEditorProps {
+  onAnalysisResult?: (result: CodeAnalysisResult) => void
 }
 
-function CodeEditor() {
+function CodeEditor({ onAnalysisResult }: CodeEditorProps) {
   const questions = useQuery(api.questions.getAllQuestions)
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null)
   const [language, setLanguage] = useState<"javascript" | "python" | "java">(LANGUAGES[0].id)
   const [code, setCode] = useState("")
   const [input, setInput] = useState("")
-  const [activeTab, setActiveTab] = useState<"input" | "output">("input")
+  const [activeTab, setActiveTab] = useState<"input" | "output" | "analysis">("input")
   const [isExecuting, setIsExecuting] = useState(false)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [executionResult, setExecutionResult] = useState<ExecuteCodeResult | null>(null)
+  const [analysisResult, setAnalysisResult] = useState<CodeAnalysisResult | null>(null)
 
   const selectedQuestion = selectedQuestionId ? questions?.find((q: Question) => q._id === selectedQuestionId) : questions?.[0]
 
@@ -93,6 +97,38 @@ function CodeEditor() {
     }
   }
 
+  const handleSubmitCode = async () => {
+    if (!selectedQuestion) return
+
+    setIsAnalyzing(true)
+    setActiveTab("analysis")
+
+    try {
+      const result = await analyzeCode({
+        code,
+        language,
+        questionTitle: selectedQuestion.title,
+        questionDescription: selectedQuestion.description,
+      })
+
+      setAnalysisResult(result)
+
+      // Call the callback if provided
+      if (onAnalysisResult) {
+        onAnalysisResult(result)
+      }
+    } catch (error) {
+      console.error("Failed to analyze code:", error)
+      setAnalysisResult({
+        isPlagiarized: false,
+        confidence: 0,
+        reasoning: "Failed to analyze code. Please try again.",
+      })
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
   if (!questions) return <LoaderUI />
   if (questions.length === 0) {
     return (
@@ -110,7 +146,7 @@ function CodeEditor() {
   return (
     <ResizablePanelGroup direction="vertical" className="min-h-[calc(100vh-4rem-1px)]">
       {/* QUESTION SECTION */}
-      <ResizablePanel>
+      <ResizablePanel defaultSize={30} minSize={20}>
         <ScrollArea className="h-full">
           <div className="p-6">
             <div className="max-w-4xl mx-auto space-y-6">
@@ -229,62 +265,75 @@ function CodeEditor() {
       <ResizableHandle withHandle />
 
       {/* CODE EDITOR */}
-      <ResizablePanel defaultSize={60} maxSize={100}>
-        <div className="h-full flex flex-col">
-          <div className="flex-1 relative overflow-hidden">
-            <Editor
-              height="100%"
-              defaultLanguage={language}
-              language={language}
-              theme="vs-dark"
-              value={code}
-              onChange={(value) => setCode(value || "")}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 18,
-                lineNumbers: "on",
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                padding: { top: 16, bottom: 16 },
-                wordWrap: "on",
-                wrappingIndent: "indent",
-              }}
-            />
-          </div>
+      <ResizablePanel defaultSize={50} minSize={30}>
+        <div className="h-full">
+          <Editor
+            height="100%"
+            defaultLanguage={language}
+            language={language}
+            theme="vs-dark"
+            value={code}
+            onChange={(value) => setCode(value || "")}
+            options={{
+              minimap: { enabled: false },
+              fontSize: 18,
+              lineNumbers: "on",
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              padding: { top: 16, bottom: 16 },
+              wordWrap: "on",
+              wrappingIndent: "indent",
+            }}
+          />
+        </div>
+      </ResizablePanel>
 
-          <div className="border-t border-border bg-background">
-            <div className="flex items-center justify-between p-2 bg-muted/30">
-              <Tabs
-                value={activeTab}
-                onValueChange={(value) => setActiveTab(value as "input" | "output")}
-                className="w-full"
-              >
-                <div className="flex items-center justify-between">
-                  <TabsList>
-                    <TabsTrigger value="input">Input</TabsTrigger>
-                    <TabsTrigger value="output">Output</TabsTrigger>
-                  </TabsList>
-                  <Button onClick={handleRunCode} disabled={isExecuting} size="sm" className="mr-2">
+      <ResizableHandle withHandle />
+
+      {/* TABS SECTION */}
+      <ResizablePanel defaultSize={20} minSize={15}>
+        <div className="h-full flex flex-col">
+          <div className="flex items-center justify-between p-2 bg-muted/30">
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) => setActiveTab(value as "input" | "output" | "analysis")}
+              className="w-full"
+            >
+              <div className="flex items-center justify-between">
+                <TabsList>
+                  <TabsTrigger value="input">Input</TabsTrigger>
+                  <TabsTrigger value="output">Output</TabsTrigger>
+                  <TabsTrigger value="analysis">Analysis</TabsTrigger>
+                </TabsList>
+                <div className="flex items-center gap-2 mr-2">
+                  <Button onClick={handleRunCode} disabled={isExecuting} size="sm" variant="secondary">
                     <PlayIcon className="h-4 w-4 mr-1" />
                     {isExecuting ? "Running..." : "Run Code"}
                   </Button>
+                  <Button onClick={handleSubmitCode} disabled={isAnalyzing} size="sm">
+                    <SendIcon className="h-4 w-4 mr-1" />
+                    {isAnalyzing ? "Analyzing..." : "Submit Solution"}
+                  </Button>
                 </div>
+              </div>
 
-                <TabsContent value="input" className="p-2">
+              <div className="h-full">
+                <TabsContent value="input" className="h-full p-2">
                   <Textarea
                     placeholder="Enter input for your code here..."
-                    className="min-h-[100px] font-mono text-sm"
+                    className="h-full font-mono text-sm"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                   />
                 </TabsContent>
-                <TabsContent value="output" className="p-2">
-                  <div className="max-h-[200px] overflow-auto">
-                    <ExecutionResult result={executionResult} isLoading={isExecuting} />
-                  </div>
+                <TabsContent value="output" className="h-full p-2">
+                  <ExecutionResult result={executionResult} isLoading={isExecuting} />
                 </TabsContent>
-              </Tabs>
-            </div>
+                <TabsContent value="analysis" className="h-full p-2">
+                  <AnalysisResult result={analysisResult} isLoading={isAnalyzing} />
+                </TabsContent>
+              </div>
+            </Tabs>
           </div>
         </div>
       </ResizablePanel>
