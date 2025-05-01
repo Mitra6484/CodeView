@@ -24,13 +24,13 @@ export async function analyzeCode(data: z.infer<typeof AnalyzeCodeSchema>): Prom
   try {
     const { code, language, questionTitle, questionDescription } = AnalyzeCodeSchema.parse(data)
 
-    // Skip analysis if no API key is available (for development)
+    // Check for API key in production
     if (!process.env.GEMINI_API_KEY) {
-      console.warn("GEMINI_API_KEY not found. Skipping plagiarism check.")
+      console.error("GEMINI_API_KEY is not configured in environment variables")
       return {
         isPlagiarized: false,
         confidence: 0,
-        reasoning: "API key not configured. Analysis skipped.",
+        reasoning: "Code analysis service is not properly configured. Please contact support.",
       }
     }
 
@@ -113,10 +113,12 @@ Make sure the response is valid JSON that can be parsed.
     }
   } catch (error) {
     console.error("Code analysis error:", error)
+    // Return a more user-friendly error message
     return {
       isPlagiarized: false,
       confidence: 0,
-      reasoning: error instanceof Error ? error.message : "Unknown error occurred",
+      reasoning: "Failed to analyze code. Please try again later or contact support if the issue persists.",
+      suggestions: "The code analysis service is currently unavailable. You may proceed with manual review.",
     }
   }
 }
