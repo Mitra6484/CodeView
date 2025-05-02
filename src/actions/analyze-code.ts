@@ -35,7 +35,7 @@ export async function analyzeCode(data: z.infer<typeof AnalyzeCodeSchema>): Prom
     }
 
     // Get the Gemini Pro model
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro-exp-03-25" })
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
 
     // Prepare the prompt for Gemini
     const prompt = `
