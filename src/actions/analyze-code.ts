@@ -35,7 +35,7 @@ export async function analyzeCode(data: z.infer<typeof AnalyzeCodeSchema>): Prom
     }
 
     // Get the Gemini Pro model
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro-exp-03-25" })
 
     // Prepare the prompt for Gemini
     const prompt = `
@@ -50,26 +50,46 @@ Submitted Code:
 ${code}
 \`\`\`
 
-Please analyze this code and provide:
-1. Is this code likely plagiarized or does it show signs of cheating? (Yes/No)
-2. Confidence level in your assessment (0-100)
-3. Reasoning for your assessment
-4. If applicable, suggestions for the interviewer
+Please analyze this code thoroughly and provide a detailed assessment. Consider the following aspects:
 
-Focus on these indicators of potential plagiarism:
-- Code that's unnecessarily complex or advanced for the problem
-- Solutions that use algorithms or approaches not typically known by candidates
-- Unusual variable names or commenting styles
-- Code that solves more than what was asked
-- Patterns that match common online solutions for this problem
+1. Code Structure and Style:
+   - Check for inconsistent coding style (e.g., mixing camelCase and snake_case)
+   - Look for unusual or non-standard variable/function naming patterns
+   - Analyze comment style and placement
+   - Check for unusual import patterns or library usage
 
-Provide your analysis in JSON format with the following structure exactly:
+2. Algorithm and Implementation:
+   - Compare the solution's complexity with the problem requirements
+   - Look for advanced algorithms or data structures that seem out of place
+   - Check for unnecessary optimization or over-engineering
+   - Analyze if the solution solves more than what was asked
+
+3. Common Plagiarism Indicators:
+   - Check for code that matches known online solutions
+   - Look for boilerplate code that seems copied
+   - Analyze if the code shows signs of being written by multiple people
+   - Check for unusual or non-standard error handling patterns
+   - Look for code that doesn't match the candidate's experience level
+
+4. Code Quality and Consistency:
+   - Check for inconsistent formatting
+   - Look for mixed language patterns (e.g., Python code with Java-style comments)
+   - Analyze if the code follows best practices for the language
+   - Check for unusual or non-standard library usage
+
+Please provide your analysis in JSON format with the following structure exactly:
 {
   "isPlagiarized": boolean,
-  "confidence": number,
-  "reasoning": "string",
-  "suggestions": "string"
+  "confidence": number (0-100),
+  "reasoning": "Detailed explanation of why you believe the code is or isn't plagiarized",
+  "suggestions": "Specific suggestions for the interviewer, including what to look for in follow-up questions"
 }
+
+Make sure to:
+- Be thorough in your analysis
+- Consider multiple factors before making a determination
+- Provide specific examples from the code to support your assessment
+- Suggest follow-up questions for the interviewer to verify authenticity
 
 Make sure the response is valid JSON that can be parsed.
 `
