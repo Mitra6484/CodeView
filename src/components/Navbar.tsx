@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ModeToggle } from "./ModeToggle";
 import { SignedIn, UserButton } from "@clerk/nextjs";
 import DashBoardButton from "./DashBoardButton";
+import { NotificationBell } from "./NotificationBell";
 
 function Navbar() {
   return (
@@ -21,6 +22,7 @@ function Navbar() {
         {/* RIGHT SIDE - ACTIONS */}
         <SignedIn>
           <div className="flex items-center space-x-4 ml-auto">
+            <NotificationBell />
             <DashBoardButton/>
             <ModeToggle />
             <UserButton />

@@ -10,7 +10,12 @@ import { useAuth } from "@clerk/clerk-react";
 
 type Interview = Doc<"interviews">;
 
-function MeetingCard({ interview }: { interview: Interview }) {
+interface MeetingCardProps {
+  interview: Interview;
+  onEdit?: (interview: Interview) => void;
+}
+
+function MeetingCard({ interview, onEdit }: MeetingCardProps) {
   const { joinMeeting } = useMeetingActions();
   const { userId } = useAuth();
 
@@ -27,11 +32,11 @@ function MeetingCard({ interview }: { interview: Interview }) {
           <span>{formattedDate}</span>
           <Badge
             variant={
-              status === "live" ? "default" : status === "upcoming" ? "secondary" : "outline"
+              status === "live" ? "default" : status === "scheduled" ? "secondary" : "outline"
             }
             className="ml-2"
           >
-            {status === "live" ? "Live Now" : status === "upcoming" ? "Upcoming" : "Completed"}
+            {status === "live" ? "Live Now" : status === "scheduled" ? "Scheduled" : "Completed"}
           </Badge>
         </div>
 
@@ -49,9 +54,13 @@ function MeetingCard({ interview }: { interview: Interview }) {
           </Button>
         )}
 
-        {status === "upcoming" && (
-          <Button variant="outline" className="w-full" disabled>
-            Waiting to Start
+        {status === "scheduled" && onEdit && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onEdit(interview)}
+          >
+            Edit
           </Button>
         )}
       </CardContent>

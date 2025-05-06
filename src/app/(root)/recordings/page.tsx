@@ -6,16 +6,19 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import useGetCalls from "@/hooks/useGetCalls";
 import { CallRecording } from "@stream-io/video-react-sdk";
 import { useEffect, useState } from "react";
+import { Loader2Icon } from "lucide-react";
 
 function RecordingsPage() {
   const { calls, isLoading } = useGetCalls();
   const [recordings, setRecordings] = useState<CallRecording[]>([]);
+  const [isFetchingRecordings, setIsFetchingRecordings] = useState(false);
 
   useEffect(() => {
     const fetchRecordings = async () => {
       if (!calls) return;
 
       try {
+        setIsFetchingRecordings(true);
         // Get recordings for each call
         const callData = await Promise.all(calls.map((call) => call.queryRecordings()));
         const allRecordings = callData.flatMap((call) => call.recordings);
@@ -23,13 +26,15 @@ function RecordingsPage() {
         setRecordings(allRecordings);
       } catch (error) {
         console.log("Error fetching recordings:", error);
+      } finally {
+        setIsFetchingRecordings(false);
       }
     };
 
     fetchRecordings();
   }, [calls]);
 
-  if (isLoading) return <LoaderUI />;
+  if (isLoading || isFetchingRecordings) return <LoaderUI />;
 
   return (
     <div className="container max-w-7xl mx-auto p-6">
@@ -40,7 +45,6 @@ function RecordingsPage() {
       </p>
 
       {/* RECORDINGS GRID */}
-
       <ScrollArea className="h-[calc(100vh-12rem)] mt-3">
         {recordings.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-6">

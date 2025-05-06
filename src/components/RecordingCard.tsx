@@ -3,16 +3,22 @@ import toast from "react-hot-toast";
 import { format } from "date-fns";
 import { calculateRecordingDuration } from "@/lib/utils";
 import { Card, CardContent, CardFooter, CardHeader } from "./ui/card";
-import { CalendarIcon, ClockIcon, CopyIcon, PlayIcon } from "lucide-react";
+import { CalendarIcon, ClockIcon, CopyIcon, PlayIcon, Loader2Icon } from "lucide-react";
 import { Button } from "./ui/button";
+import { useState } from "react";
 
 function RecordingCard({ recording }: { recording: CallRecording }) {
+  const [isCopying, setIsCopying] = useState(false);
+
   const handleCopyLink = async () => {
     try {
+      setIsCopying(true);
       await navigator.clipboard.writeText(recording.url);
       toast.success("Recording link copied to clipboard");
     } catch (error) {
       toast.error("Failed to copy link to clipboard");
+    } finally {
+      setIsCopying(false);
     }
   };
 
@@ -59,8 +65,12 @@ function RecordingCard({ recording }: { recording: CallRecording }) {
           <PlayIcon className="size-4 mr-2" />
           Play Recording
         </Button>
-        <Button variant="secondary" onClick={handleCopyLink}>
-          <CopyIcon className="size-4" />
+        <Button variant="secondary" onClick={handleCopyLink} disabled={isCopying}>
+          {isCopying ? (
+            <Loader2Icon className="size-4 animate-spin" />
+          ) : (
+            <CopyIcon className="size-4" />
+          )}
         </Button>
       </CardFooter>
     </Card>

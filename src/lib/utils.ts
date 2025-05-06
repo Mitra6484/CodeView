@@ -13,18 +13,25 @@ type User = Doc<"users">;
 export const groupInterviews = (interviews: Interview[]) => {
   if (!interviews) return {};
 
+  const now = new Date();
+
   return interviews.reduce((acc: any, interview: Interview) => {
     const date = new Date(interview.startTime);
-    const now = new Date();
+    const interviewStartTime = date.getTime();
+    const endTime = addHours(date, 1);
 
-    if (interview.status === "succeeded") {
-      acc.succeeded = [...(acc.succeeded || []), interview];
-    } else if (interview.status === "failed") {
-      acc.failed = [...(acc.failed || []), interview];
-    } else if (isBefore(date, now)) {
-      acc.completed = [...(acc.completed || []), interview];
-    } else if (isAfter(date, now)) {
-      acc.upcoming = [...(acc.upcoming || []), interview];
+    // For scheduled interviews, determine status based on time
+    if (interview.status === "scheduled") {
+      if (isBefore(now, interviewStartTime)) {
+        acc.upcoming = [...(acc.upcoming || []), interview];
+      } else if (isWithinInterval(now, { start: date, end: endTime })) {
+        acc.live = [...(acc.live || []), interview];
+      } else {
+        acc.completed = [...(acc.completed || []), interview];
+      }
+    } else {
+      // For other statuses, use them directly
+      acc[interview.status] = [...(acc[interview.status] || []), interview];
     }
 
     return acc;
@@ -78,16 +85,34 @@ export const calculateRecordingDuration = (startTime: string, endTime: string) =
 
 export const getMeetingStatus = (interview: Interview) => {
   const now = new Date();
-  const interviewStartTime = interview.startTime;
+  const interviewStartTime = new Date(interview.startTime);
   const endTime = addHours(interviewStartTime, 1);
 
-  if (
-    interview.status === "completed" ||
-    interview.status === "failed" ||
-    interview.status === "succeeded"
-  )
+  // First check the interview's explicit status
+  if (interview.status === "succeeded" || interview.status === "failed") {
+    return interview.status;
+  }
+
+  // For scheduled interviews, determine status based on time
+  if (interview.status === "scheduled") {
+    if (isBefore(now, interviewStartTime)) {
+      return "scheduled";
+    }
+    if (isWithinInterval(now, { start: interviewStartTime, end: endTime })) {
+      return "live";
+    }
+    if (isAfter(now, endTime)) {
+      return "completed";
+    }
+  }
+
+  // For live interviews
+  if (interview.status === "live") {
+    if (isWithinInterval(now, { start: interviewStartTime, end: endTime })) {
+      return "live";
+    }
     return "completed";
-  if (isWithinInterval(now, { start: interviewStartTime, end: endTime })) return "live";
-  if (isBefore(now, interviewStartTime)) return "upcoming";
-  return "completed";
+  }
+
+  return interview.status;
 };

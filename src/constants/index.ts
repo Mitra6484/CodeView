@@ -1,14 +1,15 @@
 import { Clock, Code2, Calendar, Users } from "lucide-react";
 
 export const INTERVIEW_CATEGORY = [
-  { id: "upcoming", title: "Upcoming Interviews", variant: "outline" },
-  { id: "completed", title: "Completed", variant: "secondary" },
+  { id: "scheduled", title: "Scheduled Interviews", variant: "outline" },
+  { id: "live", title: "Live Interviews", variant: "default" },
+  { id: "completed", title: "Completed Interviews", variant: "secondary" },
   { id: "succeeded", title: "Succeeded", variant: "default" },
   { id: "failed", title: "Failed", variant: "destructive" },
 ] as const;
 
 export const TIME_SLOTS = [
-  "05:48",
+  "05:30",
   "06:00",
   "06:30",
   "07:00",
