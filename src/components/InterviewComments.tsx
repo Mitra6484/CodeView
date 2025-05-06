@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
