@@ -34,7 +34,7 @@ function DashboardPage() {
     return null;
   }
 
-  const handleStatusUpdate = async (interviewId: Id<"interviews">, status: string) => {
+  const handleStatusUpdate = async (interviewId: Id<"interviews">, status: "scheduled" | "live" | "completed" | "succeeded" | "failed") => {
     try {
       await updateStatus({ id: interviewId, status })
       toast.success(`Interview marked as ${status}`)
@@ -45,7 +45,7 @@ function DashboardPage() {
 
   if (isLoading || !interviews || !users) return <LoaderUI />
 
-  const groupedInterviews = groupInterviews(interviews)
+  const groupedInterviews = groupInterviews(interviews) as Record<string, Interview[]>
   const hasInterviews = Object.values(groupedInterviews).some(category => category.length > 0)
 
   return (

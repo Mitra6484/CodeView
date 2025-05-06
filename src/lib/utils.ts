@@ -10,7 +10,7 @@ export function cn(...inputs: ClassValue[]) {
 type Interview = Doc<"interviews">;
 type User = Doc<"users">;
 
-export const groupInterviews = (interviews: Interview[]) => {
+export const groupInterviews = (interviews: Interview[]): Record<string, Interview[]> => {
   if (!interviews) return {};
 
   const now = new Date();
