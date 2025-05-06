@@ -375,3 +375,10 @@ export const sendInterviewReminder = mutation({
     }
   },
 })
+
+export const getInterview = query({
+  args: { id: v.id("interviews") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
+  },
+});

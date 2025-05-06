@@ -1,6 +1,6 @@
 import { InterviewComments } from "@/components/InterviewComments";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
+import { api } from "../../../../../convex/_generated/api";
+import { Id } from "../../../../../convex/_generated/dataModel";
 import { useQuery } from "convex/react";
 
 export default function InterviewPage({ params }: { params: { id: string } }) {
@@ -28,7 +28,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
       </div>
 
       <div className="mt-8">
-        <InterviewComments interviewId={interview._id} />
+        <InterviewComments interviewId={interview._id} status={interview.status} />
       </div>
     </div>
   );
